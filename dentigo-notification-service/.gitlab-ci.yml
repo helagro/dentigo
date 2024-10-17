@@ -1,0 +1,49 @@
+stages:
+    - build
+    - test
+
+default:
+    image: node
+    tags:
+        - docker
+
+.standard-rules:
+    rules:
+        - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+before_script:
+    - npm i
+
+build:
+    extends:
+        - .standard-rules
+    stage: build
+    script:
+        - npm run build
+
+lint:
+    stage: test
+    extends:
+        - .standard-rules
+    script:
+        - npm run lint
+
+unit_and_integration:
+    stage: test
+    tags:
+        - banana
+    script:
+        - mkdir -p config
+        - cat "$PRIVATE_ENCRYPT_KEY" > config/pickle.pem
+        - touch .env
+        - echo "POSTGRES_TYPE=\"$DATABASE_TYPE\"" > .env
+        - echo "POSTGRES_HOST=\"$POSTGRES_HOST\"" >> .env
+        - echo "POSTGRES_PORT=\"$POSTGRES_PORT\"" >> .env
+        - echo "POSTGRES_USERNAME=\"$POSTGRES_USERNAME\"" >> .env
+        - echo "POSTGRES_PASSWORD=\"$POSTGRES_PASSWORD\"" >> .env
+        - echo "POSTGRES_DATABASE=\"$POSTGRES_DATABASE\"" >> .env
+        - echo "BROKER_URL=\"$BROKER_URL\"" >> .env
+        - echo "ACC_EMAIL=\"$ACC_EMAIL\"" >> .env
+        - echo "ACC_PASS=\"$ACC_PASS\"" >> .env
+        - npx jest

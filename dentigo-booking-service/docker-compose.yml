@@ -1,0 +1,29 @@
+version: '1.0'
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - booking-db:/var/lib/postgresql/data
+    restart: always
+
+  booking:
+    image: uniprojects/dentigo-booking-service:latest
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DATABASE=postgres
+    volumes:
+      - type: bind
+        source: /root/dentigo/booking/config
+        target: /usr/src/app/config
+    depends_on:
+      - postgres
+    restart: always
+
+volumes:
+  booking-db:

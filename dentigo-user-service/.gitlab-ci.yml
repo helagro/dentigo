@@ -1,0 +1,40 @@
+# ------------------------- SETTINGS ------------------------- #
+
+stages:
+    - build
+    - test
+    - deploy
+
+default:
+    image: node:lts-slim
+    tags:
+        - docker
+
+# --------------------------- SETUP -------------------------- #
+
+before_script:
+    - npm i --force
+
+# -------------------------- BUILD -------------------------- #
+
+build:
+    stage: build
+    script:
+        - npm run build
+
+# --------------------------- TEST --------------------------- #
+
+test_eslint:
+    stage: test
+    script:
+        - npm install --global eslint-cli
+        - eslint ./src --ext .js,.ts --ignore-path .gitignore --max-warnings 0
+
+test_unit:
+    stage: test
+    script:
+        - mkdir config
+        - cat $privateSign > config/privateSign.pem
+        - cat $privateEncrypt > config/privateEncrypt.pem
+        - npm i --global jest
+        - jest

@@ -1,0 +1,71 @@
+image: node
+
+stages:
+  - lint
+  - build
+  - test
+  - publish
+  - deploy
+
+lint:
+  stage: lint
+  tags:
+    - docker
+  script:
+    - npm i
+    - npm run lint
+
+build:
+  stage: build
+  tags: 
+    - docker
+  script:
+    - npm i
+    - npm run build
+
+test:
+  stage: test
+  tags: 
+    - docker
+  script:
+    - npm i
+    - npm run test -- --watchAll=false
+
+publish:
+  image: docker:latest
+  stage: publish
+  tags:
+    - docker-build
+  services:
+    - name: docker:dind
+  script: 
+    - docker build . -t uniprojects/dentigo-clinic-service
+    - docker login -u uniprojects -p $DOCKER_PASSWORD
+    - docker push uniprojects/dentigo-clinic-service
+  environment:
+    name: production
+  only:
+    refs:
+      - main
+
+deploy:
+  stage: deploy
+  tags:
+    - docker
+  image: docker:latest
+  script:
+    - eval $(ssh-agent -s)
+    - chmod og= $SSH_PRIVATE_KEY
+    - ssh-add $SSH_PRIVATE_KEY
+    - mkdir -p ~/.ssh
+    - cp "$SSH_KNOWN_HOSTS" ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - chmod 700 ~/.ssh
+    - docker -H $SSH_URL compose down --remove-orphans
+    - docker -H $SSH_URL compose pull
+    - docker -H $SSH_URL compose up -d
+  environment:
+    name: production
+  only:
+    refs:
+      - main

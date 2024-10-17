@@ -1,0 +1,83 @@
+# ------------------------- SETTINGS ------------------------- #
+
+stages:
+    - build
+    - test
+    - deploy
+
+default:
+    image: node:lts-slim
+    tags:
+        - docker
+
+variables:
+    BUILD_PATH: 'build'
+    STATIC_OUTPUT_PATH: 'static'
+
+# --------------------------- SETUP -------------------------- #
+
+before_script:
+    - mkdir -p $BUILD_PATH
+    - mkdir -p $STATIC_OUTPUT_PATH
+    - npm i
+    - npm install --global vercel
+    - vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+
+# -------------------------- BUILD -------------------------- #
+
+build_preview:
+    stage: build
+    except:
+        - main
+    script:
+        - vercel build --yes --token=$VERCEL_TOKEN
+        - cp -r .vercel $BUILD_PATH
+        - cp -r .vercel/output/static/* $STATIC_OUTPUT_PATH
+    artifacts:
+        paths:
+            - $BUILD_PATH
+            - $STATIC_OUTPUT_PATH
+
+build_production:
+    stage: build
+    only:
+        - main
+    script:
+        - vercel build --prod --yes --token=$VERCEL_TOKEN
+        - cp -r .vercel $BUILD_PATH
+        - cp -r .vercel/output/static/* $STATIC_OUTPUT_PATH
+    artifacts:
+        paths:
+            - $BUILD_PATH
+            - $STATIC_OUTPUT_PATH
+
+# --------------------------- TEST --------------------------- #
+
+test_eslint:
+    stage: test
+    script:
+        - npm install --global eslint-cli
+        - eslint ./src --ext .vue,.js,.ts --ignore-path .gitignore --max-warnings 0
+
+test_unit:
+    stage: test
+    script:
+        - npm run test
+
+# -------------------------- DEPLOY -------------------------- #
+
+deploy_preview:
+    stage: deploy
+    except:
+        - main
+    script:
+        - cd $BUILD_PATH
+        - vercel deploy --prebuilt --yes --token=$VERCEL_TOKEN
+
+deploy_production:
+    stage: deploy
+    only:
+        - main
+    script:
+        - cd $BUILD_PATH
+        - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
